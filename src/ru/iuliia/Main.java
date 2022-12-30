@@ -1,12 +1,12 @@
 package ru.iuliia;
 
-import java.io.IOException;
-
-import static ru.iuliia.runner.Performance.startProgram;
+import ru.iuliia.runner.ApplicationRunner;
 
 public class Main {
 
-    public static void main(String[] args) throws IOException {
-        startProgram();
+    private static final ApplicationRunner applicationRunner = new ApplicationRunner();
+
+    public static void main(String[] args) {
+        applicationRunner.run();
     }
 }

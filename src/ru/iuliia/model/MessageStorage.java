@@ -1,4 +1,4 @@
-package ru.iuliia.entity;
+package ru.iuliia.model;
 
 public final class MessageStorage {
     public static final String WRITE_ABSOLUTE_PATH = "Введите абсолютный адрес к папке: ";
@@ -9,4 +9,6 @@ public final class MessageStorage {
     public static final String RESULTS_OUTPUT = "\\results.txt";
     public static final String RESULTS_TEXT = "Полученный текст:\n";
     public static final String RESULTS_LIST = "\nПолученный список:\n";
+    public static final String OUTPUT_ERROR = "\nОшибка с выводом.\n";
+    public static final String RUN_ONE_MORE_TIME = "\nПовторить ввод? y/n\n";
 }
