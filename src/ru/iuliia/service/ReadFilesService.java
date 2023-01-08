@@ -17,17 +17,30 @@ import java.util.List;
 import java.util.Scanner;
 import java.util.stream.Stream;
 
+/**
+ * Класс для чтения файлов и записи их в список
+ */
 public class ReadFilesService implements ReadService {
+    /** Путь к файлу */
     private String pathToMainDirectory;
+    /** Список файлов в папке */
     private final List<File> filesInFolder;
+    /** Переменная для хранения доступа к интерфейсу ShelfRepository */
     private final ShelfRepository shelfRepository;
 
-
+    /**
+     * Конструктор - инициализация списка для всех файлов и получения доступа к ShelfRepository
+     * @param shelfRepository переменная для хранения доступа к интерфейсу ShelfRepository
+     */
     public ReadFilesService(ShelfRepository shelfRepository) {
         this.filesInFolder = new ArrayList<>();
         this.shelfRepository = shelfRepository;
     }
 
+    /**
+     * Функция, считывающая файлы из папки и помещающая их в список
+     * @exception IncorrectDirectoryException выбрасывается ошибка в случае неправильной директории
+     */
     @Override
     public void fill() throws HomeworkException {
         Scanner in = new Scanner(System.in);
@@ -50,16 +63,28 @@ public class ReadFilesService implements ReadService {
         }
     }
 
+    /**
+     * Функция для доступа к пути к папке
+     * @return возвращает путь к папке
+     */
     @Override
     public String getPathToMainDirectory() {
         return pathToMainDirectory;
     }
 
+    /**
+     * Функция очищения выделенной памяти
+     */
     @Override
     public void clear() {
         filesInFolder.clear();
     }
 
+    /**
+     * Функция для создания списка файлов, их содержимого и потомков
+     * @param item название файла
+     * @exception IgnoredException выбрасывает ошибку в случае отсутствия файла в папке
+     */
     private void readFile(File item) {
         List<String> text = new ArrayList<>();
         try (Scanner scanner = new Scanner(item)) {

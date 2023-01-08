@@ -1,6 +1,7 @@
 package ru.iuliia.service;
 
 import ru.iuliia.exception.FileRelationException;
+import ru.iuliia.exception.HomeworkException;
 import ru.iuliia.exception.IgnoredException;
 import ru.iuliia.model.BusinessFileModel;
 import ru.iuliia.model.MessageStorage;
@@ -12,30 +13,49 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Класс для вывода полученного списка и содержимого файлов
+ */
 public class PrintFilesService implements PrintService {
+    /** Имя файла, с которого начинается вывод */
     private String startFile;
+    /** Список файлов для вывода */
     private final List<String> finalList;
+    /** Список проверенных файлов */
+    private final List<String> checkedFiles;
+    /** Кол-во всех файлов */
     private int startingSize;
+    /** Поток для вывода */
     private FileOutputStream out;
-    private final ShelfRepository shelfRepository;
+    /** Переменная для хранения доступа к интерфейсу readService */
     private final ReadService readService;
+    /** Список всех файлов */
+    final List<BusinessFileModel> bookShelf;
+
+    /**
+     * Конструктор - получение доступа к ShelfRepository и ReadService, создание пустого списка для файлов и списка проверенных файлов
+     * @param shelfRepository переменная для хранения доступа к интерфейсу ShelfRepository
+     * @param readService переменная для хранения доступа к интерфейсу ReadService
+     */
     public PrintFilesService(ShelfRepository shelfRepository, ReadService readService) {
         this.finalList = new ArrayList<>();
-        this.shelfRepository = shelfRepository;
         this.readService = readService;
+        bookShelf = shelfRepository.getBookShelf();
+        checkedFiles = new ArrayList<>();
     }
 
-
+    /**
+     * Функция, подготавливающая поток для вывода файлов и запускающая процесс их вывода
+     * @exception IgnoredException выбрасывает ошибку в случае ошибки создания файла для вывода или ошибки вывода содержимого файла
+     */
     @Override
-    public void startPrinting() {
+    public void startPrinting() throws HomeworkException {
         String pathToMainDirectory = readService.getPathToMainDirectory();
         try {
             out = new FileOutputStream(pathToMainDirectory + (MessageStorage.RESULTS_OUTPUT));
         } catch (FileNotFoundException e) {
             throw new IgnoredException(e);
         }
-
-        final List<BusinessFileModel> bookShelf = shelfRepository.getBookShelf();
         startingSize = bookShelf.size();
         try {
             out.write(MessageStorage.RESULTS_TEXT.getBytes());
@@ -48,56 +68,78 @@ public class PrintFilesService implements PrintService {
         }
     }
 
+    /**
+     * Функция очищения выделенной памяти
+     */
     @Override
     public void clear() {
         finalList.clear();
+        bookShelf.clear();
     }
 
-    private void printingFiles() {
+    /**
+     * Функция для поиска начального файла для вывода и запуска процесса печатания
+     * @exception FileRelationException выбрасывает ошибку в зависимости файлов
+     */
+    private void printingFiles() throws HomeworkException {
         while (finalList.size() != startingSize) {
             findStartFile();
-            if (finalList.contains(startFile)) {
+            if (startFile == null) {  // если файл не нашли
                 throw new FileRelationException();
             }
             BusinessFileModel nextFile = findNextFile(startFile);
             if (nextFile != null) {
                 recursionPrint(false, nextFile);
             }
-            if (finalList.size() != startingSize) {
+            if (finalList.size() > startingSize) {
                 throw new FileRelationException();
             }
         }
     }
-    private void recursionPrint(boolean isAKid, BusinessFileModel checkingFile) {
+
+    /**
+     * Рекурсивная функция для вывода содержимого файла
+     * @param isAKid переменная, показывающая, проверяем ли мы потомка
+     * @param checkingFile проверяемый файл
+     * @exception FileRelationException выбрасывает ошибку в зависимости файлов
+     * @exception IgnoredException ошибка при выводе текста
+     */
+    private void recursionPrint(boolean isAKid, BusinessFileModel checkingFile) throws HomeworkException {
         if (checkingFile == null) {
             return;
         }
         if (!checkingFile.kids.isEmpty()) {
             for (int i = 0; i < checkingFile.kids.size(); i++) { // проверяем потомков
-                if (!finalList.contains(checkingFile.kids.get(i))) {
-                    final List<BusinessFileModel> bookShelf = shelfRepository.getBookShelf();
+                if (!finalList.contains(checkingFile.kids.get(i)) && !checkedFiles.contains(checkingFile.kids.get(i))) {
+                    checkedFiles.add(checkingFile.kids.get(i));
                     recursionPrint(true, checkingFile.findFile(bookShelf, checkingFile.kids.get(i)));
                 }
             }
-            for (String obj : checkingFile.text) { // печатаем
-                try {
-                    out.write(obj.getBytes());
-                    out.write('\n');
-                } catch (IOException e) {
-                    throw new IgnoredException(e);
-                }
-            }
-            if (finalList.contains(checkingFile.name)) {
-                throw new FileRelationException();
-            }
-            finalList.add(checkingFile.name); // добавляем в list
-            if (!isAKid) {
-                recursionPrint(false, findNextFile(checkingFile.name));
+        }
+        if (finalList.contains(checkingFile.name)) {
+            throw new FileRelationException();
+        }
+        for (String obj : checkingFile.text) { // печатаем
+            try {
+                out.write(obj.getBytes());
+                out.write('\n');
+            } catch (IOException e) {
+                throw new IgnoredException(e);
             }
         }
+        finalList.add(checkingFile.name); // добавляем в list
+        if (!isAKid) {
+            recursionPrint(false, findNextFile(checkingFile.name)); // проверяем предков
+        }
     }
-    private BusinessFileModel findNextFile(String startFile) {
-        final List<BusinessFileModel> bookShelf = shelfRepository.getBookShelf();
+
+    /**
+     * Функция для поиска родителя для файла без потомков
+     * @param startFile начальный файл
+     * @return возвращает найденный файл или null, если файл не был найден
+     * @exception FileRelationException выбрасывает ошибку в зависимости файлов
+     */
+    private BusinessFileModel findNextFile(String startFile) throws HomeworkException {
         for (BusinessFileModel businessFileModel : bookShelf) {
             List<String> fileKids = businessFileModel.kids;
             if (fileKids.contains(startFile)) {
@@ -106,11 +148,19 @@ public class PrintFilesService implements PrintService {
         }
         return null;
     }
-    private void findStartFile() {
-        final List<BusinessFileModel> bookShelf = shelfRepository.getBookShelf();
+
+    /**
+     * Функция для поиска файла без потомков
+     * @exception FileRelationException выбрасывает ошибку в зависимости файлов
+     * @exception IgnoredException ошибка при выводе текста
+     */
+    private void findStartFile() throws HomeworkException {
         for (BusinessFileModel businessFileModel : bookShelf) {
-            if (businessFileModel.kids.isEmpty() && !businessFileModel.colour) {
+            if (businessFileModel.kids.isEmpty() && !finalList.contains(businessFileModel.name)) {
                 startFile = businessFileModel.name;
+                if (finalList.contains(startFile)) {
+                    throw new FileRelationException();
+                }
                 finalList.add(startFile);
                 for (String obj : businessFileModel.text) {
                     try {
@@ -120,12 +170,16 @@ public class PrintFilesService implements PrintService {
                         throw new IgnoredException(e);
                     }
                 }
-                businessFileModel.colour = true;
                 break;
             }
         }
     }
-    private void printList()  {
+
+    /**
+     * Функция для вывода полученного списка файлов
+     * @exception IgnoredException ошибка при выводе текста
+     */
+    private void printList() throws HomeworkException {
         for (String obj: finalList) {
             try {
                 out.write(obj.getBytes());

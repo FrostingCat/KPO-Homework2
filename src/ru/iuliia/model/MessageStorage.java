@@ -1,5 +1,8 @@
 package ru.iuliia.model;
 
+/**
+ * Класс для хранения сообщений
+ */
 public final class MessageStorage {
     public static final String WRITE_ABSOLUTE_PATH = "Введите абсолютный адрес к папке: ";
     public static final String NO_DIRECTORY = "Нет такой директории";
